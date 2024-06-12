@@ -3,6 +3,7 @@ from utils import timer
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import traceback
+from joblib import Parallel, delayed
 from loguru import logger
 from typing import Generic, Iterable, TypeVar
 
@@ -36,47 +37,31 @@ class Step(ABC):
     @timer()
     def step(self, data):
         raise NotImplementedError
-
+    
     @timer()
-    def run(self, batch:Batch) -> Batch:
-        updates = []
-        for sample in batch.content:
-            try:
-                updates.append(self.step(sample))
-            except Exception as e:
-                logger.error(f"Error in {self.name}: {e}")
-                logger.error(traceback.format_exc())
-                continue
-        batch.content = updates
-        return batch
-
-class FilterStep(Step):
-    name:str
+    def _step(self, data):
+        try:
+            return self.step(data)
+        except Exception as e:
+            logger.error(f"Error in {self.name}: {e}")
+            logger.error(traceback.format_exc())
+            return None
 
     @timer()
     def run(self, batch:Batch) -> Batch:
         start = len(batch.content)
-        logger.info(f"{self.name} started filtering {start} samples")
-
-        updated = []
-        for sample in batch.content:
-            try:
-                if self.step(sample) is not None:
-                    updated.append(sample)
-            except Exception as e:
-                logger.error(f"Error in {self.name}: {e}")
-                logger.error(traceback.format_exc())
-                continue
-
-        batch.content = updated
-
+        logger.info(f"{self.name} started processing {start} samples")
+        updates = Parallel(self.threads)(delayed(self._step)(sample) for sample in batch.content)
+        batch.content = [sample for sample in updates if sample is not None]
         end = len(batch.content)
         if end <= start // 2:
             logger.warning(f"{self.name} filtered more than half of the samples")
-        logger.info(f"{self.name} finished filtering {end} samples")
+        logger.info(f"{self.name} finished processing {end} samples")
 
         return batch
-                
+
+class FilterStep(Step):
+    name:str    
 
 class LocalPipeline:
     def __init__(self, steps:list[Step], reader:Reader):
