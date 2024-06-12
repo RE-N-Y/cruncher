@@ -4,9 +4,9 @@ from base import Reader, Step, FilterStep, Batch
 from huggingface_hub import HfFileSystem
 from s3fs import S3FileSystem
 from fsspec.implementations.dirfs import DirFileSystem
+from envs import get_s3_key, get_s3_secret, get_s3_endpoint
 
 import os,io
-from json import JSONEncoder
 from uuid import UUID
 import traceback
 import duckdb
@@ -168,9 +168,9 @@ class FinebooruWriter(Step):
     def __init__(self):
         self.tgt = "finebooru/raw"
         self.s3 = S3FileSystem(
-            key="ZXNA022VQU5EH2CN6QTT",
-            secret="lWPIXlJgBrljobeMP7127hLvYTlGOw0bChw7IgYe",
-            endpoint_url="https://s3.us-east-1.wasabisys.com"
+            key=get_s3_key(),
+            secret=get_s3_secret(),
+            endpoint_url=get_s3_endpoint()
         )
 
     def encodable(self, obj):

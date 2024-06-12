@@ -1,5 +1,6 @@
 .vscode
 __pycache__
 .tmp
+.env
 .DS_Store
 notebooks
