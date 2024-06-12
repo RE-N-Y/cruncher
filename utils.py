@@ -1,14 +1,15 @@
 import time
 from loguru import logger
 
-def timer(name=None, verbosity=1):
+def timer(verbosity=1):
     def _timer(func):
-        def wrapper(*args, **kwargs):
+        def wrapper(self, *args, **kwargs):
             start = time.time()
-            result = func(*args, **kwargs)
+            result = func(self, *args, **kwargs)
             end = time.time()
             if verbosity > 0:
-                logger.info(f"{name or func.__name__} took {end - start} seconds")
+                name = self.__class__.__name__ + "." + func.__name__
+                logger.info(f"{name} took {end - start} seconds")
             return result
         return wrapper
 
